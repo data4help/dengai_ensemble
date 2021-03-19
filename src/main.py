@@ -48,22 +48,22 @@ clf_pipeline = imblearn_make_pipeline(
 
 clf_parameters = [
     {"modelswitcher__estimator": [svm.SVC(random_state=RS)],
-     "modelswitcher__estimator__C": [0.1, 1, 5],
+     # "modelswitcher__estimator__C": [0.1, 1, 5],
      "featureselection__estimator": [svm.SVC(random_state=RS)],
      "smote__sampling_strategy": [0.5, 1]},
 
     {"modelswitcher__estimator": [LogisticRegression(random_state=RS)],
-     "modelswitcher__estimator__C": [0.1, 1, 2],
+     # "modelswitcher__estimator__C": [0.1, 1, 2],
      "featureselection__estimator": [LogisticRegression(random_state=RS)],
      "smote__sampling_strategy": [0.5, 1]},
 
     {"modelswitcher__estimator": [RandomForestClassifier(random_state=RS)],
-     "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
+     # "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
      "featureselection__estimator": [RandomForestClassifier(random_state=RS)],
      "smote__sampling_strategy": [0.5]},
 
     {"modelswitcher__estimator": [GradientBoostingClassifier(random_state=RS)],
-     "modelswitcher__estimator__learning_rate": [0.01, 0.1, 0.2],
+     # "modelswitcher__estimator__learning_rate": [0.01, 0.1, 0.2],
      "featureselection__estimator": [GradientBoostingClassifier(random_state=RS)],
      "smote__sampling_strategy": [0.5, 1]},
 ]
@@ -87,13 +87,13 @@ reg_parameters = [
      "featureselection__estimator": [LinearRegression()]},
 
     {"modelswitcher__estimator": [RandomForestRegressor(random_state=RS)],
-     "modelswitcher__estimator__min_samples_leaf": [1, 5, 10, 20],
+     # "modelswitcher__estimator__min_samples_leaf": [1, 5, 10, 25, 50],
      "featureselection__estimator": [RandomForestRegressor(random_state=RS)]},
 
     {"modelswitcher__estimator": [GradientBoostingRegressor(random_state=RS)],
-     "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
-     "modelswitcher__estimator__max_depth": [3, 5, 10],
-     "modelswitcher__estimator__learning_rate": [0.01, 0.1, 0.2],
+     # "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
+     # "modelswitcher__estimator__max_depth": [3, 5, 10],
+     # "modelswitcher__estimator__learning_rate": [0.01, 0.1, 0.2],
      "featureselection__estimator": [GradientBoostingRegressor(random_state=RS)]}
 ]
 
@@ -138,7 +138,7 @@ def make_predictions(city, threshold):
 
 test_pred_results = {}
 threshold_list = [90, 95, 99]
-for city in tqdm(["sj", "iq"]):
+for city in tqdm(["iq", "sj"]):
     train_data, test_data, mae_list, clf_list, reg_list = [], [], [], [], []
     for threshold in tqdm(threshold_list):
         y_pred_train, y_pred_test, mae, clf_dict, reg_dict = make_predictions(city, threshold)
@@ -151,7 +151,7 @@ for city in tqdm(["sj", "iq"]):
     best_mae_argmin = plot_prediction_results(train_data=train_data, threshold_list=threshold_list,
                                               mae_list=mae_list, city=city)
     test_pred_results[city] = test_data[best_mae_argmin]
-    test_data[best_mae_argmin].to_csv(f"/Users/paulmora/Documents/projects/dengai_ensemble/data/processed/{city}")
+    test_data[best_mae_argmin].to_csv(f"/Users/paulmora/Documents/projects/dengai_ensemble/data/predictions/{city}.csv")
     print(clf_list[best_mae_argmin])
     print(reg_list[best_mae_argmin])
 
