@@ -159,9 +159,11 @@ class Imputer(BaseEstimator, TransformerMixin):
 class FeatureCreation(BaseEstimator, TransformerMixin):
     """Here we create lagged versions of the variables, polynomials and sums."""
 
-    def __init__(self, degree, max_lag):
+    def __init__(self, degree, max_lag, lagged_features=True, polynomial_features=True):
         self.degree = degree
         self.max_lag = max_lag
+        self.lagged_features = lagged_features
+        self.polynomial_features = polynomial_features
 
     def fit(self, X, y=None):
         # Saving the last n rows of training in order to append those for the test data
@@ -175,22 +177,26 @@ class FeatureCreation(BaseEstimator, TransformerMixin):
         if X.index[0] > self.train_last_date:
             X.append(self.last_train_rows)
 
-        # Lagged terms
         non_time_columns = [x for x in X.columns if not x.startswith("month_") and "weekofyear" not in x]
         X_wo_dummy = X.loc[:, non_time_columns]
-        lagged_data = pd.concat([X_wo_dummy.shift(i) for i in range(1, self.max_lag + 1)], axis=1)
-        lagged_columns = [f"{column}_lag{i}" for i in range(1, self.max_lag + 1) for column in non_time_columns]
-        lagged_data.columns = lagged_columns
+
+        # Lagged terms
+        if self.lagged_features:
+            lagged_data = pd.concat([X_wo_dummy.shift(i) for i in range(1, self.max_lag + 1)], axis=1)
+            lagged_columns = [f"{column}_lag{i}" for i in range(1, self.max_lag + 1) for column in non_time_columns]
+            lagged_data.columns = lagged_columns
+            X = pd.concat([X, lagged_data], axis=1)
 
         # Interaction terms
-        poly_data = X.loc[:, non_time_columns].copy()
-        poly = PolynomialFeatures(degree=self.degree, include_bias=False, interaction_only=False)
-        poly_data_array = poly.fit_transform(poly_data)
-        poly_feature_names = poly.get_feature_names(non_time_columns)
-        poly_data_df = pd.DataFrame(data=poly_data_array, columns=poly_feature_names)
-        poly_wo_initial_features = poly_data_df.loc[:, [x for x in poly_feature_names if x not in non_time_columns]]
+        if self.polynomial_features:
+            poly_data = X.loc[:, non_time_columns].copy()
+            poly = PolynomialFeatures(degree=self.degree, include_bias=False, interaction_only=False)
+            poly_data_array = poly.fit_transform(poly_data)
+            poly_feature_names = poly.get_feature_names(non_time_columns)
+            poly_data_df = pd.DataFrame(data=poly_data_array, columns=poly_feature_names)
+            poly_wo_initial_features = poly_data_df.loc[:, [x for x in poly_feature_names if x not in non_time_columns]]
+            X = pd.concat([X, poly_wo_initial_features], axis=1)
 
-        X = pd.concat([X, poly_wo_initial_features, lagged_data], axis=1)
         X.fillna(method="bfill", inplace=True)
         return X
 
@@ -275,6 +281,7 @@ class FeatureSelection(BaseEstimator, TransformerMixin):
             svm_model = svm.SVR(kernel="linear")
             linear_model = LinearRegression()
             rfr_model = RandomForestRegressor(random_state=42)
+            self.scoring = "r2"
 
         svm_columns_df = self._svm_feature_selection(svm_model, X, y)
         lgr_columns_df = self._linear_feature_selection(linear_model, X, y)
@@ -338,6 +345,7 @@ class TBATSWrapper(BaseEstimator, RegressorMixin):
         left_magnitude = magnitude[:int(len(magnitude)/2)]
         left_frequency = frequency[:int(len(frequency)/2)]
 
+        prominence = np.median(left_magnitude) + 3 * np.std(left_magnitude)
         peaks = sig.find_peaks(left_magnitude[left_frequency >= 0], prominence=10 ** 3)[0]
         peak_freq = left_frequency[peaks]
         list_frequencies = (1/peak_freq).tolist()

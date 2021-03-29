@@ -48,22 +48,22 @@ clf_pipeline = imblearn_make_pipeline(
 
 clf_parameters = [
     {"modelswitcher__estimator": [svm.SVC(random_state=RS)],
-     # "modelswitcher__estimator__C": [0.1, 1, 5],
+     "modelswitcher__estimator__C": [0.1, 1, 5],
      "featureselection__estimator": [svm.SVC(random_state=RS)],
      "smote__sampling_strategy": [0.5, 1]},
 
     {"modelswitcher__estimator": [LogisticRegression(random_state=RS)],
-     # "modelswitcher__estimator__C": [0.1, 1, 2],
+     "modelswitcher__estimator__C": [0.1, 1, 2],
      "featureselection__estimator": [LogisticRegression(random_state=RS)],
      "smote__sampling_strategy": [0.5, 1]},
 
     {"modelswitcher__estimator": [RandomForestClassifier(random_state=RS)],
-     # "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
+     "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
      "featureselection__estimator": [RandomForestClassifier(random_state=RS)],
-     "smote__sampling_strategy": [0.5]},
+     "smote__sampling_strategy": [0.5, 1]},
 
     {"modelswitcher__estimator": [GradientBoostingClassifier(random_state=RS)],
-     # "modelswitcher__estimator__learning_rate": [0.01, 0.1, 0.2],
+     "modelswitcher__estimator__learning_rate": [0.05, 0.1, 0.2],
      "featureselection__estimator": [GradientBoostingClassifier(random_state=RS)],
      "smote__sampling_strategy": [0.5, 1]},
 ]
@@ -77,7 +77,7 @@ reg_pipeline = imblearn_make_pipeline(
     Stationarity(SIGNIFICANCE_LEVEL=SIGNIFICANCE_LEVEL),
     Transformer(),
     Imputer(n_neighbors=N_NEIGHBOURS),
-    FeatureCreation(degree=DEGREE, max_lag=MAX_LAG),
+    FeatureCreation(degree=DEGREE, max_lag=MAX_LAG, lagged_features=False),
     FeatureSelection(e_list=e_list, scoring=reg_scoring, clf=False),
     ModelSwitcher()
 )
@@ -87,19 +87,19 @@ reg_parameters = [
      "featureselection__estimator": [LinearRegression()]},
 
     {"modelswitcher__estimator": [RandomForestRegressor(random_state=RS)],
-     # "modelswitcher__estimator__min_samples_leaf": [1, 5, 10, 25, 50],
+     "modelswitcher__estimator__min_samples_leaf": [1, 5, 10, 25, 50],
      "featureselection__estimator": [RandomForestRegressor(random_state=RS)]},
 
     {"modelswitcher__estimator": [GradientBoostingRegressor(random_state=RS)],
-     # "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
-     # "modelswitcher__estimator__max_depth": [3, 5, 10],
-     # "modelswitcher__estimator__learning_rate": [0.01, 0.1, 0.2],
+     "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
+     "modelswitcher__estimator__max_depth": [3, 5, 10],
+     "modelswitcher__estimator__learning_rate": [0.1, 0.2],
      "featureselection__estimator": [GradientBoostingRegressor(random_state=RS)]}
 ]
 
 reg_gscv = GridSearchCV(estimator=reg_pipeline, param_grid=reg_parameters, scoring=reg_scoring, cv=cv)
 
-# %%
+# %% Prediction function
 
 def make_predictions(city, threshold):
 
@@ -118,7 +118,10 @@ def make_predictions(city, threshold):
     subset_x_test = X_test.loc[clf_pred_test, :]
     reg_gscv.fit(subset_x_train, subset_y_train)
     reg_y_pred_train = reg_gscv.best_estimator_.predict(subset_x_train).round().astype(int)
-    reg_y_pred_test = reg_gscv.best_estimator_.predict(subset_x_test).round().astype(int)
+    if sum(clf_pred_test) != 0:
+        reg_y_pred_test = reg_gscv.best_estimator_.predict(subset_x_test).round().astype(int)
+    else:
+        reg_y_pred_test = []
 
     # Smoother
     winsorized_y_train = winsorize_data(data=y_train, upper_threshold=threshold)
@@ -151,7 +154,7 @@ for city in tqdm(["iq", "sj"]):
     best_mae_argmin = plot_prediction_results(train_data=train_data, threshold_list=threshold_list,
                                               mae_list=mae_list, city=city)
     test_pred_results[city] = test_data[best_mae_argmin]
-    test_data[best_mae_argmin].to_csv(f"/Users/paulmora/Documents/projects/dengai_ensemble/data/predictions/{city}.csv")
+    test_data[best_mae_argmin].to_csv(f"/Users/PM/Documents/projects/dengai_ensemble/data/predictions/{city}.csv")
     print(clf_list[best_mae_argmin])
     print(reg_list[best_mae_argmin])
 
