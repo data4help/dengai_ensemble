@@ -77,7 +77,7 @@ def plot_prediction_results(train_data, threshold_list, mae_list, city):
     """This function takes all the predictions which come from the different thresholds."""
     _, _, y_train = city_query(city)
     n_train = len(train_data)
-    fig, axs = plt.subplots(figsize=(10*n_train, 10), ncols=n_train)
+    fig, axs = plt.subplots(figsize=(30*n_train, 10), ncols=n_train)
     axs = axs.ravel()
     for i, (data, threshold, mae) in enumerate(zip(train_data, threshold_list, mae_list)):
         axs[i].plot(data.values, label=f"Threshold at level {threshold} - MAE: {round(mae, 2)}")
@@ -99,6 +99,24 @@ def plot_confusion_matrix(y_true, y_pred, city, threshold):
     axs.set_ylabel("True Values")
     axs.set_xlabel("Predicted Values")
     path = f"{FIGURES_PATH}/confusion_matrix/{city}_{threshold}.png"
+    fig.savefig(path, bbox_inches="tight")
+    plt.close()
+
+# %% Plot entire time series with predictions
+
+def plot_total(y_pred, city):
+
+    _, _, y_train = city_query(city)
+    y_train.reset_index(drop=True, inplace=True)
+
+    new_index = list(range(len(y_train), len(y_train) + len(y_pred)))
+    y_pred.index = new_index
+
+    fig, axs = plt.subplots(figsize=(20, 10))
+    axs.plot(y_train, color="blue", label="Y True")
+    axs.plot(y_pred, color="red", label="Y Pred")
+    axs.legend()
+    path = f"{FIGURES_PATH}/{city}_total_predictions.png"
     fig.savefig(path, bbox_inches="tight")
     plt.close()
 

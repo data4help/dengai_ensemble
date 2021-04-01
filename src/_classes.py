@@ -346,7 +346,7 @@ class TBATSWrapper(BaseEstimator, RegressorMixin):
         left_frequency = frequency[:int(len(frequency)/2)]
 
         prominence = np.median(left_magnitude) + 3 * np.std(left_magnitude)
-        peaks = sig.find_peaks(left_magnitude[left_frequency >= 0], prominence=10 ** 3)[0]
+        peaks = sig.find_peaks(left_magnitude[left_frequency >= 0], prominence=prominence)[0]
         peak_freq = left_frequency[peaks]
         list_frequencies = (1/peak_freq).tolist()
 

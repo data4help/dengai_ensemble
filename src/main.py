@@ -3,6 +3,7 @@
 
 # %% Packages
 
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import make_pipeline as imblearn_make_pipeline
@@ -15,7 +16,7 @@ from sklearn.metrics import mean_absolute_error
 from src._classes import (Encoding, ColumnCorrection, Transformer, Stationarity, Imputer, FeatureCreation,
                           FeatureSelection, TBATSWrapper, ModelSwitcher)
 from src._functions import (city_query, find_top_n_obs, winsorize_data, plot_confusion_matrix,
-                            combining_models, plot_prediction_results)
+                            combining_models, plot_prediction_results, plot_total)
 import src._config
 
 # %% General Pipeline settings
@@ -114,7 +115,7 @@ def make_predictions(city, threshold):
     plot_confusion_matrix(y_true=binary_target, y_pred=clf_pred_train, city=city, threshold=threshold)
 
     # Regression
-    subset_x_train, subset_y_train = X_train.loc[binary_target.values, :], y_train[binary_target.values]
+    subset_x_train, subset_y_train = X_train.loc[clf_pred_train, :], y_train[clf_pred_train]
     subset_x_test = X_test.loc[clf_pred_test, :]
     reg_gscv.fit(subset_x_train, subset_y_train)
     reg_y_pred_train = reg_gscv.best_estimator_.predict(subset_x_train).round().astype(int)
@@ -130,8 +131,7 @@ def make_predictions(city, threshold):
     smt_pred_test = smt.predict(X=X_test)
 
     # Combination models
-    total_pred_train = combining_models(clf=binary_target.values, reg=reg_y_pred_train,
-                                        smt=smt_pred_train, index_df=X_train)
+    total_pred_train = combining_models(clf=clf_pred_train, reg=reg_y_pred_train, smt=smt_pred_train, index_df=X_train)
     total_pred_test = combining_models(clf=clf_pred_test, reg=reg_y_pred_test, smt=smt_pred_test, index_df=X_test)
     mae = mean_absolute_error(y_true=y_train, y_pred=total_pred_train)
 
@@ -158,3 +158,14 @@ for city in tqdm(["iq", "sj"]):
     print(clf_list[best_mae_argmin])
     print(reg_list[best_mae_argmin])
 
+# %% Plotting test predictions
+
+for city in test_pred_results.keys():
+    y_pred = test_pred_results[city].copy()
+    plot_total(y_pred, city)
+
+# %% Saving predictions
+
+_, _, y_
+
+test_pred_results
