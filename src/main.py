@@ -5,18 +5,20 @@
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import pandas as pd
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import make_pipeline as imblearn_make_pipeline
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.ensemble import (RandomForestClassifier, GradientBoostingClassifier,
                               RandomForestRegressor, GradientBoostingRegressor)
 from sklearn import svm
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import mean_absolute_error
+from sklearn.model_selection import TimeSeriesSplit
 from src._classes import (Encoding, ColumnCorrection, Transformer, Stationarity, Imputer, FeatureCreation,
                           FeatureSelection, TBATSWrapper, ModelSwitcher)
 from src._functions import (city_query, find_top_n_obs, winsorize_data, plot_confusion_matrix,
-                            combining_models, plot_prediction_results, plot_total)
+                            combining_models, plot_prediction_results, plot_total, save_prediction_results)
 import src._config
 
 # %% General Pipeline settings
@@ -49,24 +51,16 @@ clf_pipeline = imblearn_make_pipeline(
 
 clf_parameters = [
     {"modelswitcher__estimator": [svm.SVC(random_state=RS)],
-     "modelswitcher__estimator__C": [0.1, 1, 5],
-     "featureselection__estimator": [svm.SVC(random_state=RS)],
-     "smote__sampling_strategy": [0.5, 1]},
+     "featureselection__estimator": [svm.SVC(random_state=RS)]},
 
     {"modelswitcher__estimator": [LogisticRegression(random_state=RS)],
-     "modelswitcher__estimator__C": [0.1, 1, 2],
-     "featureselection__estimator": [LogisticRegression(random_state=RS)],
-     "smote__sampling_strategy": [0.5, 1]},
+     "featureselection__estimator": [LogisticRegression(random_state=RS)]},
 
     {"modelswitcher__estimator": [RandomForestClassifier(random_state=RS)],
-     "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
-     "featureselection__estimator": [RandomForestClassifier(random_state=RS)],
-     "smote__sampling_strategy": [0.5, 1]},
+     "featureselection__estimator": [RandomForestClassifier(random_state=RS)]},
 
     {"modelswitcher__estimator": [GradientBoostingClassifier(random_state=RS)],
-     "modelswitcher__estimator__learning_rate": [0.05, 0.1, 0.2],
-     "featureselection__estimator": [GradientBoostingClassifier(random_state=RS)],
-     "smote__sampling_strategy": [0.5, 1]},
+     "featureselection__estimator": [GradientBoostingClassifier(random_state=RS)]},
 ]
 
 clf_gscv = GridSearchCV(estimator=clf_pipeline, param_grid=clf_parameters, scoring=clf_scoring, cv=cv)
@@ -88,13 +82,9 @@ reg_parameters = [
      "featureselection__estimator": [LinearRegression()]},
 
     {"modelswitcher__estimator": [RandomForestRegressor(random_state=RS)],
-     "modelswitcher__estimator__min_samples_leaf": [1, 5, 10, 25, 50],
      "featureselection__estimator": [RandomForestRegressor(random_state=RS)]},
 
     {"modelswitcher__estimator": [GradientBoostingRegressor(random_state=RS)],
-     "modelswitcher__estimator__min_samples_leaf": [1, 5, 10],
-     "modelswitcher__estimator__max_depth": [3, 5, 10],
-     "modelswitcher__estimator__learning_rate": [0.1, 0.2],
      "featureselection__estimator": [GradientBoostingRegressor(random_state=RS)]}
 ]
 
@@ -102,70 +92,60 @@ reg_gscv = GridSearchCV(estimator=reg_pipeline, param_grid=reg_parameters, scori
 
 # %% Prediction function
 
-def make_predictions(city, threshold):
+class CombinationModel(BaseEstimator, RegressorMixin):
 
-    # Extract the data
-    X_train, X_test, y_train = city_query(city)
+    def __init__(self, city, reg_pipeline, clf_pipeline, threshold=None):
+        self.city = city
+        self.reg_pipeline = reg_pipeline
+        self.clf_pipeline = clf_pipeline
+        self.threshold = threshold
 
-    # Classification
-    binary_target = find_top_n_obs(target=y_train, threshold=threshold, city=city)
-    clf_gscv.fit(X_train, binary_target)
-    clf_pred_train = clf_gscv.best_estimator_.predict(X_train)
-    clf_pred_test = clf_gscv.best_estimator_.predict(X_test)
-    plot_confusion_matrix(y_true=binary_target, y_pred=clf_pred_train, city=city, threshold=threshold)
+    def fit(self, X_train, y):
 
-    # Regression
-    subset_x_train, subset_y_train = X_train.loc[clf_pred_train, :], y_train[clf_pred_train]
-    subset_x_test = X_test.loc[clf_pred_test, :]
-    reg_gscv.fit(subset_x_train, subset_y_train)
-    reg_y_pred_train = reg_gscv.best_estimator_.predict(subset_x_train).round().astype(int)
-    if sum(clf_pred_test) != 0:
-        reg_y_pred_test = reg_gscv.best_estimator_.predict(subset_x_test).round().astype(int)
-    else:
-        reg_y_pred_test = []
+        binary_target = find_top_n_obs(target=y, threshold=self.threshold, city=self.city)
+        self.clf_pipeline.fit(X_train, binary_target)
 
-    # Smoother
-    winsorized_y_train = winsorize_data(data=y_train, upper_threshold=threshold)
-    smt = TBATSWrapper().fit(X=X_train, y=winsorized_y_train)
-    smt_pred_train = smt.in_sample_predict()
-    smt_pred_test = smt.predict(X=X_test)
+        subset_x_train, subset_y_train = X_train.loc[binary_target.values, :], y[binary_target.values]
+        self.reg_pipeline.fit(subset_x_train, subset_y_train)
 
-    # Combination models
-    total_pred_train = combining_models(clf=clf_pred_train, reg=reg_y_pred_train, smt=smt_pred_train, index_df=X_train)
-    total_pred_test = combining_models(clf=clf_pred_test, reg=reg_y_pred_test, smt=smt_pred_test, index_df=X_test)
-    mae = mean_absolute_error(y_true=y_train, y_pred=total_pred_train)
+        winsorized_y_train = winsorize_data(data=y, upper_threshold=self.threshold)
+        self.smt = TBATSWrapper().fit(X=X_train, y=winsorized_y_train)
 
-    return total_pred_train, total_pred_test, mae, clf_gscv.best_params_, reg_gscv.best_params_
+    def predict(self, X_test):
+
+        clf_test = self.clf_pipeline.best_estimator_.predict(X_test)
+        subset_X_test = X_test.loc[clf_test, :]
+        if sum(clf_test) != 0:
+            reg_test = self.reg_pipeline.best_estimator_.predict(subset_X_test).round().astype(int)
+        else:
+            reg_test = []
+        smt_test = self.smt.predict(X=X_test)
+
+        total_forecast = combining_models(clf=clf_test, reg=reg_test, smt=smt_test, index_df=X_test)
+        return total_forecast
 
 # %% Obtaining results
 
 test_pred_results = {}
-threshold_list = [90, 95, 99]
+param_grid = {"threshold": [85, 90, 95, 97.5]}
+tscv = TimeSeriesSplit(n_splits=2)
 for city in tqdm(["iq", "sj"]):
-    train_data, test_data, mae_list, clf_list, reg_list = [], [], [], [], []
-    for threshold in tqdm(threshold_list):
-        y_pred_train, y_pred_test, mae, clf_dict, reg_dict = make_predictions(city, threshold)
-        train_data.append(y_pred_train)
-        test_data.append(y_pred_test)
-        mae_list.append(mae)
-        clf_list.append(clf_dict)
-        reg_list.append(reg_dict)
 
-    best_mae_argmin = plot_prediction_results(train_data=train_data, threshold_list=threshold_list,
-                                              mae_list=mae_list, city=city)
-    test_pred_results[city] = test_data[best_mae_argmin]
-    test_data[best_mae_argmin].to_csv(f"/Users/PM/Documents/projects/dengai_ensemble/data/predictions/{city}.csv")
-    print(clf_list[best_mae_argmin])
-    print(reg_list[best_mae_argmin])
+    X_train, X_test, y_train = city_query(city)
+    estimator = CombinationModel(city=city, reg_pipeline=reg_gscv, clf_pipeline=clf_gscv)
+    combination_gscv = GridSearchCV(estimator=estimator, param_grid=param_grid, cv=tscv, scoring=reg_scoring)
+    combination_gscv.fit(X_train, y_train)
+
+    cv_results_df = pd.DataFrame(combination_gscv.cv_results_)
+    print(cv_results_df.head())
+
+    test_pred_results[city] = {}
+    test_pred_results[city]["train"] = combination_gscv.best_estimator_.predict(X_train)
+    test_pred_results[city]["test"] = combination_gscv.best_estimator_.predict(X_test)
 
 # %% Plotting test predictions
 
 for city in test_pred_results.keys():
     y_pred = test_pred_results[city].copy()
     plot_total(y_pred, city)
-
-# %% Saving predictions
-
-_, _, y_
-
-test_pred_results
+save_prediction_results(test_pred_results)

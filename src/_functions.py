@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datetime import datetime
 from scipy.stats.mstats import winsorize
 from sklearn.metrics import confusion_matrix
 
@@ -77,12 +78,12 @@ def plot_prediction_results(train_data, threshold_list, mae_list, city):
     """This function takes all the predictions which come from the different thresholds."""
     _, _, y_train = city_query(city)
     n_train = len(train_data)
-    fig, axs = plt.subplots(figsize=(30*n_train, 10), ncols=n_train)
+    fig, axs = plt.subplots(figsize=(15*n_train, 10), ncols=n_train)
     axs = axs.ravel()
     for i, (data, threshold, mae) in enumerate(zip(train_data, threshold_list, mae_list)):
         axs[i].plot(data.values, label=f"Threshold at level {threshold} - MAE: {round(mae, 2)}")
         axs[i].plot(y_train.values, label="True Values", linestyle="None", marker="o", alpha=0.2)
-        axs[i].legend()
+        axs[i].legend(loc="best")
     path = f"{FIGURES_PATH}/different_thresholds_{city}.png"
     fig.savefig(fname=path, bbox_inches="tight")
 
@@ -113,11 +114,23 @@ def plot_total(y_pred, city):
     y_pred.index = new_index
 
     fig, axs = plt.subplots(figsize=(20, 10))
-    axs.plot(y_train, color="blue", label="Y True")
-    axs.plot(y_pred, color="red", label="Y Pred")
+    axs.plot(y_train, color="blue", label="True values")
+    axs.plot(y_pred, color="red", label="Predictions")
     axs.legend()
     path = f"{FIGURES_PATH}/{city}_total_predictions.png"
     fig.savefig(path, bbox_inches="tight")
-    plt.close()
 
+# %% Save the prediction results
 
+def save_prediction_results(pred_dict):
+    _, test_data, _ = load_data()
+    prediction_df = test_data.loc[:, ["city", "year", "weekofyear"]]
+    prediction_df.loc[:, "total_cases"] = np.nan
+
+    for (city, predictions) in pred_dict.items():
+        bool_city = prediction_df.loc[:, "city"] == city
+        prediction_df.loc[bool_city, "total_cases"] = predictions.values
+
+    todays_date = datetime.today().strftime("%Y%m%d")
+    prediction_df.loc[:, "total_cases"] = prediction_df.loc[:,"total_cases"].astype(int)
+    prediction_df.to_csv(f"{RAW_PATH}/predictions/combination_{todays_date}.csv", index=False)
