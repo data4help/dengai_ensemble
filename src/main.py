@@ -3,22 +3,23 @@
 
 # %% Packages
 
-import matplotlib.pyplot as plt
 from tqdm import tqdm
-import pandas as pd
+import numpy as np
+
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import make_pipeline as imblearn_make_pipeline
-from sklearn.base import BaseEstimator, RegressorMixin
+
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.ensemble import (RandomForestClassifier, GradientBoostingClassifier,
                               RandomForestRegressor, GradientBoostingRegressor)
 from sklearn import svm
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import TimeSeriesSplit
+
+from sklearn.metrics import mean_absolute_error
+from sklearn.model_selection import GridSearchCV, train_test_split
+
 from src._classes import (Encoding, ColumnCorrection, Transformer, Stationarity, Imputer, FeatureCreation,
                           FeatureSelection, TBATSWrapper, ModelSwitcher)
-from src._functions import (city_query, find_top_n_obs, winsorize_data, plot_confusion_matrix,
-                            combining_models, plot_prediction_results, plot_total, save_prediction_results)
+from src._functions import (city_query, winsorize_data, combining_models, plotting_predictions, save_prediction_results)
 import src._config
 
 # %% General Pipeline settings
@@ -92,61 +93,52 @@ reg_gscv = GridSearchCV(estimator=reg_pipeline, param_grid=reg_parameters, scori
 
 # %% Prediction function
 
-class CombinationModel(BaseEstimator, RegressorMixin):
+def combination_model(X_train, X_test, y_train, threshold):
 
-    def __init__(self, city, reg_pipeline, clf_pipeline, threshold=None):
-        self.city = city
-        self.reg_pipeline = reg_pipeline
-        self.clf_pipeline = clf_pipeline
-        self.threshold = threshold
+    # Classification
+    binary_target = y_train >= np.percentile(y_train, threshold)
+    clf_gscv.fit(X_train, binary_target)
+    clf_pred_train = clf_gscv.best_estimator_.predict(X_train)
+    clf_pred_test = clf_gscv.best_estimator_.predict(X_test)
 
-    def fit(self, X_train, y):
+    # Regression
+    subset_x_train, subset_y_train = X_train.loc[clf_pred_train, :], y_train[clf_pred_train]
+    subset_x_test = X_test.loc[clf_pred_test, :]
+    reg_gscv.fit(subset_x_train, subset_y_train)
+    if sum(clf_pred_test) != 0:
+        reg_y_pred_test = reg_gscv.best_estimator_.predict(subset_x_test).round().astype(int)
+    else:
+        reg_y_pred_test = []
 
-        binary_target = find_top_n_obs(target=y, threshold=self.threshold, city=self.city)
-        self.clf_pipeline.fit(X_train, binary_target)
+    # Smoother
+    winsorized_y_train = winsorize_data(data=y_train, upper_threshold=threshold)
+    smt = TBATSWrapper().fit(X=X_train, y=winsorized_y_train)
+    smt_pred_test = smt.predict(X=X_test)
 
-        subset_x_train, subset_y_train = X_train.loc[binary_target.values, :], y[binary_target.values]
-        self.reg_pipeline.fit(subset_x_train, subset_y_train)
+    # Combination models
+    total_pred_test = combining_models(clf=clf_pred_test, reg=reg_y_pred_test, smt=smt_pred_test, index_df=X_test)
+    return total_pred_test
 
-        winsorized_y_train = winsorize_data(data=y, upper_threshold=self.threshold)
-        self.smt = TBATSWrapper().fit(X=X_train, y=winsorized_y_train)
-
-    def predict(self, X_test):
-
-        clf_test = self.clf_pipeline.best_estimator_.predict(X_test)
-        subset_X_test = X_test.loc[clf_test, :]
-        if sum(clf_test) != 0:
-            reg_test = self.reg_pipeline.best_estimator_.predict(subset_X_test).round().astype(int)
-        else:
-            reg_test = []
-        smt_test = self.smt.predict(X=X_test)
-
-        total_forecast = combining_models(clf=clf_test, reg=reg_test, smt=smt_test, index_df=X_test)
-        return total_forecast
-
-# %% Obtaining results
+# %% Testing
 
 test_pred_results = {}
-param_grid = {"threshold": [95, 97.5]}
-tscv = TimeSeriesSplit(n_splits=2)
-for city in tqdm(["sj", "iq"]):
+threshold_list = [75, 85, 95]
+for city in tqdm(["iq", "sj"]):
+    mae_list, y_pred_list = [], []
+    for threshold in tqdm(threshold_list):
 
-    X_train, X_test, y_train = city_query(city)
-    estimator = CombinationModel(city=city, reg_pipeline=reg_gscv, clf_pipeline=clf_gscv)
-    combination_gscv = GridSearchCV(estimator=estimator, param_grid=param_grid, cv=tscv, scoring=reg_scoring)
-    combination_gscv.fit(X_train, y_train)
+        # Load data
+        X_train_total, X_test_total, y_train_total = city_query(city)
+        X_train, X_test, y_train, y_test = train_test_split(X_train_total, y_train_total, test_size=0.2, shuffle=False)
 
-    cv_results_df = pd.DataFrame(combination_gscv.cv_results_)
-    print(cv_results_df.head())
+        # Predictions
+        y_pred = combination_model(X_train, X_test, y_train, threshold)
+        mae = mean_absolute_error(y_test, y_pred)
 
-    test_pred_results[city] = {}
-    test_pred_results[city]["train"] = combination_gscv.best_estimator_.predict(X_train)
-    test_pred_results[city]["test"] = combination_gscv.best_estimator_.predict(X_test)
+        mae_list.append(mae)
+        y_pred_list.append(y_pred)
 
-# %% Plotting test predictions
-
-for city in test_pred_results.keys():
-    y_pred = test_pred_results[city].copy()
-    plot_total(y_pred, city)
-save_prediction_results(test_pred_results)
+    plotting_predictions(y_pred_list, y_test, threshold_list, city)
+    threshold_level = threshold_list[np.argmin(mae_list)]
+    test_pred_results[city] = combination_model(X_train_total,X_test_total, y_train_total, threshold_level)
 

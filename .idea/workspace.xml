@@ -3,13 +3,24 @@
   <component name="ChangeListManager">
     <list default="true" id="23bef204-882c-4519-ad6c-4ab535a6b2d0" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/2021-03-09-DengAI2-Second-Attempt-Forecasting.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/2021-03-09-DengAI2-Second-Attempt-Forecasting.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/reports/figures/top_85_levels_iq.png" beforeDir="false" afterPath="$PROJECT_DIR$/reports/figures/top_85_levels_iq.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/reports/figures/top_85_levels_sj.png" beforeDir="false" afterPath="$PROJECT_DIR$/reports/figures/top_85_levels_sj.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/reports/figures/top_90_levels_iq.png" beforeDir="false" afterPath="$PROJECT_DIR$/reports/figures/top_90_levels_iq.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/reports/figures/top_90_levels_sj.png" beforeDir="false" afterPath="$PROJECT_DIR$/reports/figures/top_90_levels_sj.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/reports/figures/top_95_levels_iq.png" beforeDir="false" afterPath="$PROJECT_DIR$/reports/figures/top_95_levels_iq.png" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/reports/figures/top_95_levels_sj.png" beforeDir="false" afterPath="$PROJECT_DIR$/reports/figures/top_95_levels_sj.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/different_thresholds_iq.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/different_thresholds_sj.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/iq_total_predictions.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/sj_total_predictions.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_80_levels_iq.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_80_levels_sj.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_85_levels_iq.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_85_levels_sj.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_90_levels.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_90_levels_iq.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_90_levels_sj.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_95_levels_iq.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_95_levels_sj.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_97.5_levels_iq.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_97.5_levels_sj.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_99_levels_iq.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/reports/figures/top_99_levels_sj.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/_classes.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/_classes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/_functions.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
     </list>
@@ -97,8 +108,8 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/main.py</url>
-          <line>123</line>
-          <option name="timeStamp" value="12" />
+          <line>124</line>
+          <option name="timeStamp" value="15" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

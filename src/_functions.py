@@ -44,13 +44,6 @@ def find_top_n_obs(target, threshold, city):
     """This function takes in the target variable and returns a boolean of whether the observation belongs to the
     top X percent."""
     top_cases_bool = target >= np.percentile(target, threshold)
-    top_cases_numbers = target[top_cases_bool]
-    fig, axs = plt.subplots(figsize=(10, 10))
-    target.plot.line(ax=axs)
-    top_cases_numbers.plot(ax=axs, style="o")
-    path = f"{FIGURES_PATH}/top_{threshold}_levels_{city}.png"
-    fig.savefig(path, bbox_inches="tight")
-    plt.close()
     return top_cases_bool
 
 # %% Winsorizer
@@ -71,53 +64,16 @@ def combining_models(clf, reg, smt, index_df):
     total_pred_df = pd.DataFrame(data=total_pred, columns=["predictions"], index=index_df.index)
     return total_pred_df
 
-# %% Plotting prediction results
+# %% Plotting predictions results
 
-def plot_prediction_results(train_data, threshold_list, mae_list, city):
+def plotting_predictions(y_pred_list, y_test, threshold_list, city):
 
-    """This function takes all the predictions which come from the different thresholds."""
-    _, _, y_train = city_query(city)
-    n_train = len(train_data)
-    fig, axs = plt.subplots(figsize=(15*n_train, 10), ncols=n_train)
-    axs = axs.ravel()
-    for i, (data, threshold, mae) in enumerate(zip(train_data, threshold_list, mae_list)):
-        axs[i].plot(data.values, label=f"Threshold at level {threshold} - MAE: {round(mae, 2)}")
-        axs[i].plot(y_train.values, label="True Values", linestyle="None", marker="o", alpha=0.2)
-        axs[i].legend(loc="best")
-    path = f"{FIGURES_PATH}/different_thresholds_{city}.png"
-    fig.savefig(fname=path, bbox_inches="tight")
-
-    smallest_mae = np.argmin(mae_list)
-    return smallest_mae
-
-# %% Plotting confusion matrix
-
-def plot_confusion_matrix(y_true, y_pred, city, threshold):
-    """This function plots a confusion matrix for the different classifiers"""
-    confusion_matrix_array = confusion_matrix(y_true=y_true, y_pred=y_pred)
     fig, axs = plt.subplots(figsize=(10, 10))
-    sns.heatmap(data=confusion_matrix_array, annot=True, ax=axs, fmt="d")
-    axs.set_ylabel("True Values")
-    axs.set_xlabel("Predicted Values")
-    path = f"{FIGURES_PATH}/confusion_matrix/{city}_{threshold}.png"
-    fig.savefig(path, bbox_inches="tight")
-    plt.close()
-
-# %% Plot entire time series with predictions
-
-def plot_total(y_pred, city):
-    _, _, y_train = city_query(city)
-    y_train.reset_index(drop=True, inplace=True)
-
-    new_index = list(range(len(y_train), len(y_train) + len(y_pred)))
-    y_pred_train = y_pred["train"]
-    y_pred_train.index = y_train.index
-
-    fig, axs = plt.subplots(figsize=(20, 10))
-    axs.plot(y_train, color="blue", label="True values")
-    axs.plot(y_pred_train, color="red", label="Predictions")
+    for y_pred, threshold_level in zip(y_pred_list, threshold_list):
+        axs.plot(y_pred.values, label=f"Threshold level at: {threshold_level}")
+    axs.plot(y_test.values, label="True Values", marker="o", linestyle="None")
     axs.legend()
-    path = f"{FIGURES_PATH}/{city}_total_predictions.png"
+    path = f"{FIGURES_PATH}/{city}_all_threshold_levels.png"
     fig.savefig(path, bbox_inches="tight")
 
 # %% Save the prediction results

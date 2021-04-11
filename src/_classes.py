@@ -352,9 +352,6 @@ class TBATSWrapper(BaseEstimator, RegressorMixin):
 
         return list_frequencies
 
-    def in_sample_predict(self):
-        return self.fitted_model.y_hat.round().astype(int)
-
     def fit(self, X, y):
         list_frequencies = self._finding_driving_frequencies(signal=y)
         estimator = TBATS(seasonal_periods=list_frequencies, n_jobs=True)
@@ -364,4 +361,5 @@ class TBATSWrapper(BaseEstimator, RegressorMixin):
     def predict(self, X):
         y_pred = self.fitted_model.forecast(steps=len(X))
         y_pred = y_pred.round().astype(int)
+        y_pred[y_pred < 0] = 0
         return y_pred
