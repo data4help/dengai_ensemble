@@ -106,16 +106,16 @@ def plot_confusion_matrix(y_true, y_pred, city, threshold):
 # %% Plot entire time series with predictions
 
 def plot_total(y_pred, city):
-
     _, _, y_train = city_query(city)
     y_train.reset_index(drop=True, inplace=True)
 
     new_index = list(range(len(y_train), len(y_train) + len(y_pred)))
-    y_pred.index = new_index
+    y_pred_train = y_pred["train"]
+    y_pred_train.index = y_train.index
 
     fig, axs = plt.subplots(figsize=(20, 10))
     axs.plot(y_train, color="blue", label="True values")
-    axs.plot(y_pred, color="red", label="Predictions")
+    axs.plot(y_pred_train, color="red", label="Predictions")
     axs.legend()
     path = f"{FIGURES_PATH}/{city}_total_predictions.png"
     fig.savefig(path, bbox_inches="tight")

@@ -24,7 +24,7 @@ import src._config
 # %% General Pipeline settings
 
 # Pipeline settings
-cv = 3
+cv = 2
 N_NEIGHBOURS = 10
 DEGREE = 2
 MAX_LAG = 4
@@ -127,9 +127,9 @@ class CombinationModel(BaseEstimator, RegressorMixin):
 # %% Obtaining results
 
 test_pred_results = {}
-param_grid = {"threshold": [85, 90, 95, 97.5]}
+param_grid = {"threshold": [95, 97.5]}
 tscv = TimeSeriesSplit(n_splits=2)
-for city in tqdm(["iq", "sj"]):
+for city in tqdm(["sj", "iq"]):
 
     X_train, X_test, y_train = city_query(city)
     estimator = CombinationModel(city=city, reg_pipeline=reg_gscv, clf_pipeline=clf_gscv)
@@ -149,3 +149,4 @@ for city in test_pred_results.keys():
     y_pred = test_pred_results[city].copy()
     plot_total(y_pred, city)
 save_prediction_results(test_pred_results)
+
