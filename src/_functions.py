@@ -66,15 +66,16 @@ def combining_models(clf, reg, smt, index_df):
 
 # %% Plotting predictions results
 
-def plotting_predictions(y_pred_list, y_test, threshold_list, city):
+def plotting_predictions(y_pred_list, y_test, threshold_list, mae_list, city):
 
     fig, axs = plt.subplots(figsize=(10, 10))
-    for y_pred, threshold_level in zip(y_pred_list, threshold_list):
-        axs.plot(y_pred.values, label=f"Threshold level at: {threshold_level}")
+    for y_pred, threshold_level, mae in zip(y_pred_list, threshold_list, mae_list):
+        axs.plot(y_pred.values, label=f"Threshold level at: {threshold_level}// MAE: {round(mae, 2)}")
     axs.plot(y_test.values, label="True Values", marker="o", linestyle="None")
     axs.legend()
     path = f"{FIGURES_PATH}/{city}_all_threshold_levels.png"
     fig.savefig(path, bbox_inches="tight")
+    plt.show()
 
 # %% Save the prediction results
 

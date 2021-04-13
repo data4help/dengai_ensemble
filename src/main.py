@@ -138,7 +138,7 @@ for city in tqdm(["iq", "sj"]):
         mae_list.append(mae)
         y_pred_list.append(y_pred)
 
-    plotting_predictions(y_pred_list, y_test, threshold_list, city)
+    plotting_predictions(y_pred_list, y_test, threshold_list, mae_list, city)
     threshold_level = threshold_list[np.argmin(mae_list)]
-    test_pred_results[city] = combination_model(X_train_total,X_test_total, y_train_total, threshold_level)
-
+    test_pred_results[city] = combination_model(X_train_total, X_test_total, y_train_total, threshold_level)
+save_prediction_results(test_pred_results)
